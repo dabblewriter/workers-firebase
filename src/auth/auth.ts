@@ -27,6 +27,13 @@ export class Auth extends FirebaseService {
     super('auth', 'https://identitytoolkit.googleapis.com/v1', settings, apiKey);
   }
 
+  async setCustomUserClaims(uid: string, claims: Record<string, any>) {
+    await this.userRequest('POST', 'accounts:update', {
+      customAttributes: JSON.stringify(claims),
+      idToken: await this.getUserToken(uid),
+    });
+  }
+
   async verify(token: string) {
     if (typeof token !== 'string') throw new Error('JWT token must be a string');
     const tokenParts = token.split('.');
