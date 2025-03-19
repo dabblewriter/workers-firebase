@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.1.5 (2025-03-19)
+- added custom user claims
+
 ## 0.0.23 (2023.07.11)
 - fixed issue with authentication remembering new users instead of logging one in
 
