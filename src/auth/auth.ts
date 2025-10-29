@@ -1,4 +1,4 @@
-import jwt from '@tsndr/cloudflare-worker-jwt';
+import { decode } from '@tsndr/cloudflare-worker-jwt';
 import { FirebaseService } from '../service';
 import type { Settings } from '../types';
 import type {
@@ -7,6 +7,7 @@ import type {
   FirebaseUserInfo,
   SignInFirebaseResponse,
   SignInResponse,
+  TokenPayload,
   TokenResponse,
   Tokens,
   User,
@@ -15,6 +16,10 @@ import type {
 const returnSecureToken = true; // used for adding boolean in requests
 const uidLength = 28;
 const oauthScope = 'https://www.googleapis.com/auth/identitytoolkit';
+const importAlgorithm = { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } };
+const textToBytes = (s: string) => new Uint8Array(Array.prototype.map.call(s, (c: string) => c.charCodeAt(0)));
+const base64ToBytes = (s: string) => textToBytes(atob(s.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '')));
+
 export type GetUsersOptions = {
   uids?: string[];
   emails?: string[];
@@ -35,15 +40,14 @@ export class Auth extends FirebaseService {
   }
 
   async verify(token: string) {
+    // implement ourselves to avoid double decode calls
     if (typeof token !== 'string') throw new Error('JWT token must be a string');
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) throw new Error('JWT token must consist of 3 parts');
     const {
       header: { alg, kid },
       payload,
-    } = jwt.decode(token) as { header: any; payload: any };
-    const importAlgorithm = (jwt as any).algorithms[alg];
-    if (!importAlgorithm) throw new Error('JWT algorithm not found');
+    } = decode(token) as { header: any; payload: TokenPayload };
     if (payload.nbf && payload.nbf > Math.floor(Date.now() / 1000)) throw 'JWT token not yet valid';
     if (payload.exp && payload.exp <= Math.floor(Date.now() / 1000)) throw 'JWT token expired';
     const jsonWebKey = await getPublicKey(kid);
@@ -53,8 +57,8 @@ export class Auth extends FirebaseService {
     const verified = await crypto.subtle.verify(
       importAlgorithm,
       key,
-      Base64URL.parse(tokenParts[2]),
-      (jwt as any)._utf8ToUint8Array(`${tokenParts[0]}.${tokenParts[1]}`)
+      base64ToBytes(tokenParts[2]),
+      textToBytes(`${tokenParts[0]}.${tokenParts[1]}`)
     );
     if (!verified) throw new Error('JWT invalid');
     return payload;
@@ -86,7 +90,9 @@ export class Auth extends FirebaseService {
 
   async signInWithCustomToken(token: string): Promise<SignInResponse> {
     const data = { token, returnSecureToken };
+    console.log('here');
     const result: SignInFirebaseResponse = await this.userRequest('POST', 'accounts:signInWithCustomToken', data);
+    console.log('result:', result);
     const tokens = convertSignInResponse(result);
     const user = await this.getUser(tokens.idToken);
     return { user, tokens };
@@ -294,8 +300,8 @@ function convertSignInResponse(response: SignInFirebaseResponse): Tokens {
   return { idToken, refreshToken };
 }
 
-let publicKeys: Record<string, JsonWebKey>;
-async function getPublicKey(kid: string): Promise<JsonWebKey> {
+let publicKeys: Record<string, JsonWebKeyWithKid>;
+async function getPublicKey(kid: string) {
   if (!publicKeys) {
     // Found this resource here https://stackoverflow.com/a/71988314/835542 since the documented one provides x509 certs, not directly useful
     const response = await fetch(
@@ -303,20 +309,14 @@ async function getPublicKey(kid: string): Promise<JsonWebKey> {
     );
     const age = parseInt(response.headers.get('Cache-Control').replace(/^.*max-age=(\d+).*$/, '$1'));
     setTimeout(() => (publicKeys = undefined), age * 1000);
-    publicKeys = ((await response.json()) as any).keys.reduce((map, key) => (map[key.kid] = key) && map, {});
+    publicKeys = ((await response.json()) as GoogleKeysResponse).keys.reduce(
+      (map, key) => (map[key.kid] = key) && map,
+      {}
+    );
   }
   return publicKeys[kid];
 }
 
-class Base64URL {
-  static parse(s: string) {
-    return new Uint8Array(
-      Array.prototype.map.call(atob(s.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '')), (c: string) =>
-        c.charCodeAt(0)
-      )
-    );
-  }
-  static stringify(a: string) {
-    return btoa(String.fromCharCode.apply(0, a)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  }
-}
+type GoogleKeysResponse = {
+  keys: JsonWebKeyWithKid[];
+};

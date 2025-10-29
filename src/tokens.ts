@@ -1,4 +1,4 @@
-import jwt from '@tsndr/cloudflare-worker-jwt';
+import { sign } from '@tsndr/cloudflare-worker-jwt';
 import type { ServiceAccount, TokenGetter } from './types';
 
 const exp = 3600;
@@ -6,7 +6,7 @@ const aud = {
   oauth: 'https://oauth2.googleapis.com/token',
   auth: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
   firestore: 'https://firestore.googleapis.com/google.firestore.v1.Firestore',
-}
+};
 
 export type Aud = Omit<typeof aud, 'oauth'>;
 
@@ -26,7 +26,7 @@ export function getTokenGetter(settings: ServiceAccount, service: keyof Aud): To
       tokenExp = now() + exp;
     }
     return token;
-  }
+  };
 }
 
 export function getOauthTokenGetter(settings: ServiceAccount) {
@@ -45,18 +45,22 @@ export function getOauthTokenGetter(settings: ServiceAccount) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const { access_token, expires_in } = (await response.json()) as { access_token: string; expires_in: number };
-      tokens.set(scope, token = access_token);
+      tokens.set(scope, (token = access_token));
       tokenExps.set(scope, now() + (expires_in || 0));
     }
 
     return token;
-  }
+  };
 }
 
 // Create firebase service account JWT to use in API calls
-export async function createToken(serviceAccount: ServiceAccount, service: keyof typeof aud, claims?: object): Promise<string> {
+export async function createToken(
+  serviceAccount: ServiceAccount,
+  service: keyof typeof aud,
+  claims?: object
+): Promise<string> {
   const iat = now();
-  return await jwt.sign(
+  return await sign(
     {
       aud: aud[service],
       iss: serviceAccount.clientEmail,

@@ -1,6 +1,6 @@
 {
   "name": "workers-firebase",
-  "version": "0.1.4",
+  "version": "0.2.1",
   "scripts": {
     "start": "tsc --watch",
     "build": "tsc",
@@ -9,11 +9,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@tsndr/cloudflare-worker-jwt": "^2.5.3",
-    "crypto-id": "^0.2.3"
+    "@tsndr/cloudflare-worker-jwt": "^3.2.0",
+    "crypto-id": "^0.3.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240512.0",
-    "typescript": "^5.4.5"
+    "@cloudflare/workers-types": "^4.20251014.0",
+    "typescript": "^5.9.3"
   }
 }

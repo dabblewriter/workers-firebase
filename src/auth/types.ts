@@ -11,6 +11,7 @@ export interface TokenPayload {
   sub: string; // Subject (uid)
   iat: number; // Issued At
   exp: number; // Expiration
+  nbf: number; // Not before
 }
 
 export interface TokenResponse {

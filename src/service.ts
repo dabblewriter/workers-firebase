@@ -1,12 +1,6 @@
 import { StatusError } from './status-error';
 import { Aud, getTokenGetter } from './tokens';
-import type {
-  HTTPMethod,
-  ServiceAccount,
-  Settings,
-  TokenGetter,
-  UserAccount
-} from './types';
+import type { HTTPMethod, ServiceAccount, Settings, TokenGetter, UserAccount } from './types';
 
 export class FirebaseService {
   getToken: TokenGetter;
@@ -17,9 +11,7 @@ export class FirebaseService {
     protected readonly settings: Settings,
     protected readonly apiKey: string
   ) {
-    this.getToken =
-      (settings as UserAccount).getToken ||
-      getTokenGetter(settings as ServiceAccount, service);
+    this.getToken = (settings as UserAccount).getToken || getTokenGetter(settings as ServiceAccount, service);
   }
 
   request<T>(
@@ -41,13 +33,9 @@ export class FirebaseService {
       authorized = body;
       body = undefined;
     }
-    const searchParams =
-      searchOrBody instanceof URLSearchParams
-        ? searchOrBody
-        : new URLSearchParams();
+    const searchParams = searchOrBody instanceof URLSearchParams ? searchOrBody : new URLSearchParams();
     searchParams.set('key', this.apiKey);
-    if (!body && searchOrBody && !(searchOrBody instanceof URLSearchParams))
-      body = searchOrBody;
+    if (!body && searchOrBody && !(searchOrBody instanceof URLSearchParams)) body = searchOrBody;
     if (path && path[0] !== ':' && path[0] !== '/') path = '/' + path;
     let Authorization: string | undefined;
     if (typeof authorized === 'string') {
@@ -55,6 +43,14 @@ export class FirebaseService {
     } else if (authorized !== false) {
       Authorization = `Bearer ${await this.getToken()}`;
     }
+    console.log(`${this.apiUrl}${path}?${searchParams}`, {
+      method,
+      body: JSON.stringify(body),
+      headers: {
+        Authorization,
+        'Content-Type': 'application/json',
+      },
+    });
     const response = await fetch(`${this.apiUrl}${path}?${searchParams}`, {
       method,
       body: JSON.stringify(body),
@@ -70,12 +66,7 @@ export class FirebaseService {
     return data;
   }
 
-  userRequest<T>(
-    method: HTTPMethod,
-    path: string,
-    search?: URLSearchParams,
-    body?: object
-  ): Promise<T>;
+  userRequest<T>(method: HTTPMethod, path: string, search?: URLSearchParams, body?: object): Promise<T>;
   userRequest<T>(method: HTTPMethod, path: string, body?: object): Promise<T>;
   async userRequest<T>(
     method: HTTPMethod,
