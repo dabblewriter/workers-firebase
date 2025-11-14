@@ -1,16 +1,28 @@
 import { StatusError } from './status-error';
 import { Aud, getTokenGetter } from './tokens';
-import type { HTTPMethod, ServiceAccount, Settings, TokenGetter, UserAccount } from './types';
+import type { HTTPMethod, ServiceAccount, ServiceAccountUnderscored, Settings, TokenGetter, UserAccount } from './types';
 
 export class FirebaseService {
   getToken: TokenGetter;
+  protected readonly settings: Settings;
 
   constructor(
     service: keyof Aud,
     protected readonly apiUrl: string,
-    protected readonly settings: Settings,
+    settings: Settings | ServiceAccountUnderscored,
     protected readonly apiKey: string
   ) {
+    if ((settings as ServiceAccountUnderscored).private_key) {
+      settings = {
+        projectId: (settings as ServiceAccountUnderscored).project_id,
+        databaseId: (settings as ServiceAccountUnderscored).database_id,
+        privateKeyId: (settings as ServiceAccountUnderscored).private_key_id,
+        privateKey: (settings as ServiceAccountUnderscored).private_key,
+        clientEmail: (settings as ServiceAccountUnderscored).client_email,
+        clientId: (settings as ServiceAccountUnderscored).client_id,
+      };
+    }
+    this.settings = settings as Settings;
     this.getToken = (settings as UserAccount).getToken || getTokenGetter(settings as ServiceAccount, service);
   }
 
@@ -43,14 +55,6 @@ export class FirebaseService {
     } else if (authorized !== false) {
       Authorization = `Bearer ${await this.getToken()}`;
     }
-    console.log(`${this.apiUrl}${path}?${searchParams}`, {
-      method,
-      body: JSON.stringify(body),
-      headers: {
-        Authorization,
-        'Content-Type': 'application/json',
-      },
-    });
     const response = await fetch(`${this.apiUrl}${path}?${searchParams}`, {
       method,
       body: JSON.stringify(body),

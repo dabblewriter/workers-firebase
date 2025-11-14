@@ -1,6 +1,6 @@
 import { decode } from '@tsndr/cloudflare-worker-jwt';
 import { FirebaseService } from '../service';
-import type { Settings } from '../types';
+import type { ServiceAccountUnderscored, Settings } from '../types';
 import type {
   AccountQuery,
   AccountQueryResult,
@@ -28,7 +28,7 @@ export type GetUsersOptions = {
 export class Auth extends FirebaseService {
   getToken: (claims?: object) => Promise<string>;
 
-  constructor(settings: Settings, apiKey: string) {
+  constructor(settings: Settings | ServiceAccountUnderscored, apiKey: string) {
     super('auth', 'https://identitytoolkit.googleapis.com/v1', settings, apiKey);
   }
 
@@ -90,9 +90,7 @@ export class Auth extends FirebaseService {
 
   async signInWithCustomToken(token: string): Promise<SignInResponse> {
     const data = { token, returnSecureToken };
-    console.log('here');
     const result: SignInFirebaseResponse = await this.userRequest('POST', 'accounts:signInWithCustomToken', data);
-    console.log('result:', result);
     const tokens = convertSignInResponse(result);
     const user = await this.getUser(tokens.idToken);
     return { user, tokens };

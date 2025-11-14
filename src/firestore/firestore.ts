@@ -1,6 +1,6 @@
 import { createId } from 'crypto-id';
 import { FirebaseService } from '../service';
-import type { HTTPMethod, Settings } from '../types';
+import type { HTTPMethod, ServiceAccountUnderscored, Settings } from '../types';
 import { DocumentSnapshot } from './document';
 import { CollectionReference, DocumentReference } from './reference';
 import { transactionSymbol, writesSymbol } from './symbols';
@@ -13,9 +13,9 @@ export class Firestore extends FirebaseService {
   [transactionSymbol]: string = undefined;
   [writesSymbol]: api.Write[] = undefined;
 
-  constructor(settings: Settings, apiKey: string) {
+  constructor(settings: Settings | ServiceAccountUnderscored, apiKey: string) {
     super('firestore', 'https://firestore.googleapis.com/v1', settings, apiKey);
-    this.basePath = `projects/${settings.projectId}/databases/${settings.databaseId || '(default)'}/documents`;
+    this.basePath = `projects/${this.settings.projectId}/databases/${this.settings.databaseId || '(default)'}/documents`;
   }
 
   collection(path: string): CollectionReference {
