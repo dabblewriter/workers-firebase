@@ -33,10 +33,10 @@ export class Auth extends FirebaseService {
   }
 
   async setCustomUserClaims(uid: string, claims: Record<string, any>) {
-    await this.userRequest('POST', 'accounts:update', {
+    await this.request('POST', 'accounts:update', {
       customAttributes: JSON.stringify(claims),
-      idToken: await this.getUserToken(uid),
-    });
+      localId: uid,
+    }, oauthScope);
   }
 
   async verify(token: string) {
