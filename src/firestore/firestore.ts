@@ -7,6 +7,7 @@ import { transactionSymbol, writesSymbol } from './symbols';
 import type { ConsistencyOptions, api } from './types';
 import { WriteBatch } from './write-batch';
 
+const scope = 'https://www.googleapis.com/auth/datastore';
 
 export class Firestore extends FirebaseService {
   basePath: string;
@@ -45,7 +46,7 @@ export class Firestore extends FirebaseService {
   async request<T>(method: HTTPMethod, path?: string, searchOrBody?: URLSearchParams | object, body?: object): Promise<T> {
     if (path && path[0] !== ':' && path[0] !== '/') path = '/' + path;
     path = this.basePath + path;
-    return super.request(method, path, searchOrBody as URLSearchParams, body);
+    return super.request(method, path, searchOrBody as URLSearchParams, body, scope);
   }
 
   autoId(): string {
