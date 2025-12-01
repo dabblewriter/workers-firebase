@@ -1,6 +1,7 @@
 import type { ServiceAccountUnderscored, Settings } from './types';
 import { Auth } from './auth/auth';
 import { Firestore } from './firestore';
+import { Storage } from './storage';
 
 
 export class App {
@@ -14,5 +15,9 @@ export class App {
 
   auth() {
     return new Auth(this.settings, this.apiKey);
+  }
+
+  storage() {
+    return new Storage(this.settings);
   }
 }

@@ -6,6 +6,7 @@ const aud = {
   oauth: 'https://oauth2.googleapis.com/token',
   auth: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
   firestore: 'https://firestore.googleapis.com/google.firestore.v1.Firestore',
+  storage: 'https://www.googleapis.com/auth/devstorage.read_only',
 };
 
 export type Aud = Omit<typeof aud, 'oauth'>;
