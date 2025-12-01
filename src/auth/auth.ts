@@ -232,6 +232,12 @@ export class Auth extends FirebaseService {
   }
 
   async queryAccounts(options: AccountQuery): Promise<AccountQueryResult> {
+    if ('limit' in options) {
+      (options as any).limit = options.limit?.toString();
+    }
+    if ('offset' in options) {
+      (options as any).offset = options.offset?.toString();
+    }
     const result: any = await this.request(
       'POST',
       `projects/${this.settings.projectId}/accounts:query`,

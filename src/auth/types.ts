@@ -134,12 +134,12 @@ export type AccountQueryExpression = { email: string } | { userId: string } | { 
 
 export interface AccountQuery {
   returnUserInfo?: boolean; // default true, if false the count will be returned
-  limit?: string; // default 500
-  offset?: string;
+  limit?: number; // default 500
+  offset?: number;
   sortBy?: AccountQuerySort; // default USER_ID
   order?: AccountQueryOrder; // default ASC
   tenantId?: string;
-  expression: [AccountQueryExpression];
+  expression?: [AccountQueryExpression];
 }
 
 export interface AccountQueryResult {
