@@ -233,7 +233,7 @@ export class Query<T = DocumentData> {
     for (let i = 0; i < fieldValues.length; ++i) {
       let fieldValue = fieldValues[i];
 
-      if (fieldOrders[i].field === FieldPath.documentId as string && typeof fieldValue === 'string') {
+      if (fieldOrders[i].field.fieldPath === FieldPath.documentId && typeof fieldValue === 'string') {
         fieldValue = this.ref.doc(fieldValue);
       }
       if (typeof fieldValue === 'undefined') {
@@ -248,6 +248,8 @@ export class Query<T = DocumentData> {
 
   async get(): Promise<QuerySnapshot<T>> {
     const { reverse, filters, ...query } = this[querySymbol];
+    const fieldOrders = getFieldOrders(this[querySymbol]);
+    query.orderBy = fieldOrders;
     if (filters.length > 1) {
       query.where = { compositeFilter: { op: 'AND', filters } };
     } else if (filters.length) {
@@ -276,6 +278,25 @@ export class Query<T = DocumentData> {
       new DocumentSnapshot<T>(this.ref.doc(decodePath(e.document.name).replace(this.ref.path, '')), e.document, e.readTime)
     );
     return new QuerySnapshot<T>(this, readTime, response.length, docs);
+  }
+
+  async *stream<T>(batchSize: number = 100): AsyncGenerator<T> {
+    const query = this.limit(batchSize);
+    let snapshot = await query.get();
+
+    while (true) {
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+
+      for (const doc of snapshot.docs) {
+        yield doc.data() as T;
+      }
+
+      if (snapshot.docs.length < batchSize) {
+        break;
+      }
+
+      snapshot = await query.startAfter(lastDoc).get();
+    }
   }
 }
 
@@ -346,7 +367,7 @@ function getFieldOrders(query: QueryOptions) {
       }
     }
   }
-  if (!fieldOrders.some(o => o.field === FieldPath.documentId as string)) {
+  if (!fieldOrders.some(o => o.field.fieldPath === FieldPath.documentId)) {
     fieldOrders.push({ field: { fieldPath: FieldPath.documentId }});
   }
   return fieldOrders;
