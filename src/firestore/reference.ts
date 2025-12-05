@@ -356,7 +356,7 @@ function extractFieldValues(documentSnapshot: DocumentSnapshot, fieldOrders: api
   const fieldValues: unknown[] = [];
 
   for (const fieldOrder of fieldOrders) {
-    if (fieldOrder.field === FieldPath.documentId as string) {
+    if (fieldOrder.field.fieldPath === FieldPath.documentId) {
       fieldValues.push(documentSnapshot.ref);
     } else {
       const fieldValue = documentSnapshot.get(fieldOrder.field.fieldPath);
