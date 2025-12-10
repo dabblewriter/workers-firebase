@@ -367,9 +367,6 @@ function getFieldOrders(query: QueryOptions) {
       }
     }
   }
-  if (!fieldOrders.some(o => o.field.fieldPath === FieldPath.documentId)) {
-    fieldOrders.push({ field: { fieldPath: FieldPath.documentId }});
-  }
   return fieldOrders;
 }
 
