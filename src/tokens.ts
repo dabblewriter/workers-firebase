@@ -42,7 +42,7 @@ export function getOauthTokenGetter(settings: ServiceAccount) {
       const oauthToken = await createToken(settings, 'oauth', { scope });
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
-        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=&assertion=${oauthToken}`,
+        body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${oauthToken}`,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const { access_token, expires_in } = (await response.json()) as { access_token: string; expires_in: number };

@@ -28,9 +28,11 @@ export class File {
     options: { responseType: 'json' }
   ): Promise<T>;
   async download(options: { responseType: 'blob' }): Promise<Blob>;
+  async download(options: {}): Promise<Body>;
+  async download(): Promise<Body>;
   async download(
     options?: { responseType?: 'arrayBuffer' | 'text' | 'json' | 'blob' }
-  ): Promise<ArrayBuffer | string | Record<string, unknown> | Blob> {
+  ): Promise<ArrayBuffer | string | Record<string, unknown> | Blob | Body> {
     const token = await this.storage.getToken();
     const url = `https://storage.googleapis.com/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(this.filePath)}?alt=media`;
 
@@ -55,8 +57,9 @@ export class File {
       case 'blob':
         return response.blob();
       case 'arrayBuffer':
-      default:
         return response.arrayBuffer();
+      default:
+        return response;
     }
   }
 
