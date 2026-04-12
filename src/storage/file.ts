@@ -20,19 +20,15 @@ export class File {
    * @param options Configuration for download response type
    * @returns The file contents in the requested format
    */
-  async download(
-    options: { responseType: 'arrayBuffer' }
-  ): Promise<ArrayBuffer>;
+  async download(options: { responseType: 'arrayBuffer' }): Promise<ArrayBuffer>;
   async download(options: { responseType: 'text' }): Promise<string>;
-  async download<T = Record<string, unknown>>(
-    options: { responseType: 'json' }
-  ): Promise<T>;
+  async download<T = Record<string, unknown>>(options: { responseType: 'json' }): Promise<T>;
   async download(options: { responseType: 'blob' }): Promise<Blob>;
   async download(options: {}): Promise<Body>;
   async download(): Promise<Body>;
-  async download(
-    options?: { responseType?: 'arrayBuffer' | 'text' | 'json' | 'blob' }
-  ): Promise<ArrayBuffer | string | Record<string, unknown> | Blob | Body> {
+  async download(options?: {
+    responseType?: 'arrayBuffer' | 'text' | 'json' | 'blob';
+  }): Promise<ArrayBuffer | string | Record<string, unknown> | Blob | Body> {
     const token = await this.storage.getToken();
     const url = `https://storage.googleapis.com/storage/v1/b/${this.bucketName}/o/${encodeURIComponent(this.filePath)}?alt=media`;
 
@@ -93,7 +89,8 @@ export class File {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to upload file: ${response.statusText}`);
+      const body = await response.text().catch(() => '');
+      throw new Error(`Failed to upload file: ${response.status} ${response.statusText} ${body}`);
     }
 
     return response.json();
