@@ -73,12 +73,32 @@ export class FieldValue {
     return new FieldValue('removeAllFromArray', elements);
   }
 
-  constructor(readonly transform: string, readonly value: any) {}
+  constructor(
+    readonly transform: string,
+    readonly value: any
+  ) {}
 
   encode(fieldPath: string): api.FieldTransform {
     const value = fieldPath === 'setToServerValue' ? this.value : encodeValue(this.value);
     return { fieldPath, [this.transform]: value };
   }
+}
+
+const SIMPLE_FIELD_SEGMENT = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
+
+/**
+ * Escape a single field-path segment for use in a Firestore fieldPath string.
+ * A fieldPath is segments joined by '.'. Each segment is either a simple
+ * identifier matching [a-zA-Z_][a-zA-Z_0-9]* or a backtick-quoted string
+ * where backticks and backslashes inside are escaped with a leading backslash.
+ */
+export function escapeFieldSegment(segment: string): string {
+  if (SIMPLE_FIELD_SEGMENT.test(segment)) return segment;
+  return '`' + segment.replace(/[\\`]/g, m => '\\' + m) + '`';
+}
+
+function joinFieldPath(paths: string[]): string {
+  return paths.map(escapeFieldSegment).join('.');
 }
 
 export class UpdateCollector {
@@ -87,7 +107,7 @@ export class UpdateCollector {
   transforms: api.FieldTransform[] = [];
 
   transform(transform: FieldValue) {
-    this.transforms.push(transform.encode(this.paths.join('.')));
+    this.transforms.push(transform.encode(joinFieldPath(this.paths)));
   }
 
   enterField(field: string) {
@@ -96,8 +116,9 @@ export class UpdateCollector {
 
   leaveField(addMask: boolean) {
     // If the field is not set, and it wasn't a transform, add it to the mask
-    if (addMask && this.transforms[this.transforms.length - 1]?.fieldPath !== this.paths.join('.')) {
-      this.mask.fieldPaths.push(this.paths.join('.'));
+    const path = joinFieldPath(this.paths);
+    if (addMask && this.transforms[this.transforms.length - 1]?.fieldPath !== path) {
+      this.mask.fieldPaths.push(path);
     }
     this.paths.pop();
   }
