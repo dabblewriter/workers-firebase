@@ -9,7 +9,11 @@ export function encode(map: DocumentData, collector?: UpdateCollector): api.MapV
   Object.entries(map).forEach(([key, value]) => {
     collector?.enterField(key);
     if (value !== undefined) fields[key] = encodeValue(value, collector);
-    const shouldAddMask = !fields[key] || !(fields[key].arrayValue || fields[key].mapValue);
+    // Maps contribute dotted leaf paths via recursion, so adding the map's
+    // own path would cause merge to overwrite sibling fields. Arrays must
+    // add their own path: Firestore fieldPaths can't address array elements,
+    // so arrays are always replaced whole at the parent path.
+    const shouldAddMask = !fields[key] || !fields[key].mapValue;
     collector?.leaveField(shouldAddMask);
   });
   return fields;
@@ -32,7 +36,11 @@ export function encodeValue(value: any, collector?: UpdateCollector) {
   if (value && value.buffer instanceof ArrayBuffer) return { bytesValue: bytesToBase64(value) };
   if (typeof value === 'object' && 'latitude' in value && 'longitude' in value && Object.keys(value).length === 2)
     return { geoPointValue: value };
-  if (Array.isArray(value)) return { arrayValue: { values: value.map(v => encodeValue(v, collector)) } };
+  // Don't pass the collector into array elements. Firestore fieldPaths
+  // cannot address elements by index, so any inner paths the elements
+  // registered (e.g. "books.id") would be invalid. Arrays are replaced
+  // whole at the parent field path.
+  if (Array.isArray(value)) return { arrayValue: { values: value.map(v => encodeValue(v)) } };
   if (typeof value === 'object') return { mapValue: { fields: encode(value, collector) } };
   throw new Error(`Unsupported value type: ${typeof value}`);
 }
