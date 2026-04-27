@@ -17,7 +17,7 @@ const returnSecureToken = true; // used for adding boolean in requests
 const uidLength = 28;
 const oauthScope = 'https://www.googleapis.com/auth/identitytoolkit';
 const importAlgorithm = { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } };
-const textToBytes = (s: string) => new Uint8Array(Array.prototype.map.call(s, (c: string) => c.charCodeAt(0)));
+const textToBytes = (s: string) => Uint8Array.from(s, c => c.charCodeAt(0));
 const base64ToBytes = (s: string) => textToBytes(atob(s.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '')));
 
 export type GetUsersOptions = {
@@ -26,17 +26,20 @@ export type GetUsersOptions = {
 };
 
 export class Auth extends FirebaseService {
-  getToken: (claims?: object) => Promise<string>;
-
   constructor(settings: Settings | ServiceAccountUnderscored, apiKey: string) {
     super('auth', 'https://identitytoolkit.googleapis.com/v1', settings, apiKey);
   }
 
   async setCustomUserClaims(uid: string, claims: Record<string, any>) {
-    await this.request('POST', 'accounts:update', {
-      customAttributes: JSON.stringify(claims),
-      localId: uid,
-    }, oauthScope);
+    await this.request(
+      'POST',
+      'accounts:update',
+      {
+        customAttributes: JSON.stringify(claims),
+        localId: uid,
+      },
+      oauthScope
+    );
   }
 
   async verify(token: string) {
@@ -116,7 +119,7 @@ export class Auth extends FirebaseService {
     const tokens = convertSignInResponse(result);
 
     const user = await this.getUser(tokens.idToken);
-    user.name = name;
+    if (user) user.name = name;
     return { user, tokens };
   }
 
@@ -148,7 +151,8 @@ export class Auth extends FirebaseService {
     // may not be returned in the same order, we will sort it
     const map = new Map<string, User>();
     (response.users || []).forEach((data: any) => map.set(uids ? data.localId : data.email, convertUserData(data)));
-    return (uids || emails).map(lookup => map.get(lookup) || null);
+    const lookups = uids || emails || [];
+    return lookups.map(lookup => map.get(lookup) || null);
   }
 
   async updateUser(idTokenOrUID: string, updates: any) {
@@ -304,17 +308,18 @@ function convertSignInResponse(response: SignInFirebaseResponse): Tokens {
   return { idToken, refreshToken };
 }
 
-let publicKeys: Record<string, JsonWebKeyWithKid>;
+let publicKeys: Record<string, JsonWebKeyWithKid> | undefined;
 async function getPublicKey(kid: string) {
   if (!publicKeys) {
     // Found this resource here https://stackoverflow.com/a/71988314/835542 since the documented one provides x509 certs, not directly useful
     const response = await fetch(
       'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
     );
-    const age = parseInt(response.headers.get('Cache-Control').replace(/^.*max-age=(\d+).*$/, '$1'));
+    const cacheControl = response.headers.get('Cache-Control') || '';
+    const age = parseInt(cacheControl.replace(/^.*max-age=(\d+).*$/, '$1'));
     setTimeout(() => (publicKeys = undefined), age * 1000);
-    publicKeys = ((await response.json()) as GoogleKeysResponse).keys.reduce(
-      (map, key) => (map[key.kid] = key) && map,
+    publicKeys = ((await response.json()) as GoogleKeysResponse).keys.reduce<Record<string, JsonWebKeyWithKid>>(
+      (map, key) => ((map[key.kid] = key), map),
       {}
     );
   }

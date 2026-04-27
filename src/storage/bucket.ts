@@ -32,11 +32,7 @@ export class Bucket {
    * @param options Optional parameters for listing (prefix, maxResults, etc.)
    * @returns An array of file metadata objects
    */
-  async list(options?: {
-    prefix?: string;
-    maxResults?: number;
-    pageToken?: string;
-  }): Promise<BucketFile[]> {
+  async list(options?: { prefix?: string; maxResults?: number; pageToken?: string }): Promise<BucketFile[]> {
     const token = await this.storage.getToken();
 
     const params = new URLSearchParams();
@@ -58,7 +54,7 @@ export class Bucket {
       throw new Error(`Failed to list files: ${response.statusText}`);
     }
 
-    const data = await response.json() as { items?: BucketFile[] };
+    const data = (await response.json()) as { items?: BucketFile[] };
     return data.items || [];
   }
 }

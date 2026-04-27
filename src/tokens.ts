@@ -12,12 +12,12 @@ const aud = {
 export type Aud = Omit<typeof aud, 'oauth'>;
 
 export function getTokenGetter(settings: ServiceAccount, service: keyof Aud): TokenGetter {
-  let token: string;
-  let tokenExp: number;
+  let token = '';
+  let tokenExp = 0;
 
   const getOauthToken = getOauthTokenGetter(settings);
 
-  return async function getToken(claims?: Record<string, any>) {
+  return async function getToken(claims?: Record<string, any>): Promise<string> {
     if (claims) {
       return await (claims.scope ? getOauthToken(claims.scope) : createToken(settings, service, claims));
     }
@@ -34,11 +34,11 @@ export function getOauthTokenGetter(settings: ServiceAccount) {
   const tokens = new Map<string, string>();
   const tokenExps = new Map<string, number>();
 
-  return async function getOauthToken(scope: string) {
+  return async function getOauthToken(scope: string): Promise<string> {
     let token = tokens.get(scope);
     const tokenExp = tokenExps.get(scope);
 
-    if (!tokenExp || now() > tokenExp - 60) {
+    if (!token || !tokenExp || now() > tokenExp - 60) {
       const oauthToken = await createToken(settings, 'oauth', { scope });
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
@@ -46,7 +46,8 @@ export function getOauthTokenGetter(settings: ServiceAccount) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const { access_token, expires_in } = (await response.json()) as { access_token: string; expires_in: number };
-      tokens.set(scope, (token = access_token));
+      token = access_token;
+      tokens.set(scope, token);
       tokenExps.set(scope, now() + (expires_in || 0));
     }
 

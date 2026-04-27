@@ -19,7 +19,7 @@ export class WriteBatch {
     return this[updateSymbol](ref, data, UpdateType.create);
   }
 
-  set<T = DocumentData>(ref: DocumentReference<T>, data: PartialWithFieldValue<T>, options: SetOptions): this;
+  set<T = DocumentData>(ref: DocumentReference<T>, data: PartialWithFieldValue<T>, options?: SetOptions): this;
   set<T = DocumentData>(ref: DocumentReference<T>, data: WithFieldValue<T>): this;
   set<T = DocumentData>(ref: DocumentReference<T>, data: PartialWithFieldValue<T>, options?: SetOptions): this {
     return this[updateSymbol](ref, data, options?.merge ? UpdateType.update : UpdateType.set);
@@ -37,12 +37,12 @@ export class WriteBatch {
     return this;
   }
 
-  async commit(): Promise<Date[]> {
+  async commit(): Promise<Array<Date | undefined>> {
     Object.freeze(this[writesSymbol]);
     if (this.firestore[writesSymbol]) {
       // transaction
-      this.firestore[writesSymbol].push(...this[writesSymbol]);
-      return;
+      this.firestore[writesSymbol]!.push(...this[writesSymbol]);
+      return [];
     }
     const response = await this.firestore.request<api.BatchWriteResponse>('POST', ':batchWrite', {
       writes: this[writesSymbol],
@@ -63,7 +63,7 @@ export class WriteBatch {
     if (failures.length > 0) {
       throw new BatchWriteError(failures);
     }
-    return response.writeResults.map(result => (result.updateTime && new Date(result.updateTime)) || undefined);
+    return response.writeResults.map(result => (result.updateTime ? new Date(result.updateTime) : undefined));
   }
 
   [updateSymbol]<T = DocumentData>(ref: DocumentReference<T>, data: any, type: UpdateType): this {
