@@ -12,13 +12,15 @@ import type {
 export class FirebaseService {
   getToken: TokenGetter;
   protected readonly settings: Settings;
+  protected apiUrl: string;
 
   constructor(
     service: keyof Aud,
-    protected readonly apiUrl: string,
+    apiUrl: string,
     settings: Settings | ServiceAccountUnderscored,
     protected readonly apiKey: string
   ) {
+    this.apiUrl = apiUrl;
     if ((settings as ServiceAccountUnderscored).private_key) {
       settings = {
         projectId: (settings as ServiceAccountUnderscored).project_id,
@@ -31,6 +33,22 @@ export class FirebaseService {
     }
     this.settings = settings as Settings;
     this.getToken = (settings as UserAccount).getToken || getTokenGetter(settings as ServiceAccount, service);
+  }
+
+  /**
+   * Redirect this service to a local Firebase emulator and bypass real auth.
+   *
+   * `host` is `host:port` (e.g. `127.0.0.1:8181`). Replaces the `googleapis.com`
+   * URL prefix with `http://${host}` and stubs `getToken` to return `'owner'`,
+   * which all Firebase emulators accept.
+   */
+  useEmulator(host: string): this {
+    const trimmed = host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    // Preserve any path suffix from the original apiUrl (e.g. "/v1" for Firestore).
+    const suffix = this.apiUrl.replace(/^https?:\/\/[^/]+/, '');
+    this.apiUrl = `http://${trimmed}${suffix}`;
+    this.getToken = async () => 'owner';
+    return this;
   }
 
   request<T>(
