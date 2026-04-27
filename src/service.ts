@@ -1,6 +1,13 @@
 import { StatusError } from './status-error';
 import { Aud, getTokenGetter } from './tokens';
-import type { HTTPMethod, ServiceAccount, ServiceAccountUnderscored, Settings, TokenGetter, UserAccount } from './types';
+import type {
+  HTTPMethod,
+  ServiceAccount,
+  ServiceAccountUnderscored,
+  Settings,
+  TokenGetter,
+  UserAccount,
+} from './types';
 
 export class FirebaseService {
   getToken: TokenGetter;
@@ -36,10 +43,10 @@ export class FirebaseService {
   request<T>(method: HTTPMethod, path: string, body?: object, authorized?: string): Promise<T>;
   async request<T>(
     method: HTTPMethod,
-    path?: string,
+    path: string,
     searchOrBody?: URLSearchParams | object,
-    body?: object | string,
-    authorized?: string
+    body?: object | string | boolean,
+    authorized?: string | boolean
   ): Promise<T> {
     if (typeof body === 'boolean' || typeof body === 'string') {
       authorized = body;
@@ -49,19 +56,16 @@ export class FirebaseService {
     searchParams.set('key', this.apiKey);
     if (!body && searchOrBody && !(searchOrBody instanceof URLSearchParams)) body = searchOrBody;
     if (path && path[0] !== ':' && path[0] !== '/') path = '/' + path;
-    let Authorization: string | undefined;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (typeof authorized === 'string') {
-      Authorization = `Bearer ${await this.getToken({ scope: authorized })}`;
+      headers.Authorization = `Bearer ${await this.getToken({ scope: authorized })}`;
     } else if (authorized !== false) {
-      Authorization = `Bearer ${await this.getToken()}`;
+      headers.Authorization = `Bearer ${await this.getToken()}`;
     }
     const response = await fetch(`${this.apiUrl}${path}?${searchParams}`, {
       method,
-      body: JSON.stringify(body),
-      headers: {
-        Authorization,
-        'Content-Type': 'application/json',
-      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers,
     });
     const data = (await response.json()) as any;
     if (data.error) {
@@ -74,10 +78,10 @@ export class FirebaseService {
   userRequest<T>(method: HTTPMethod, path: string, body?: object): Promise<T>;
   async userRequest<T>(
     method: HTTPMethod,
-    path?: string,
+    path: string,
     searchOrBody?: URLSearchParams | object,
     body?: object
   ): Promise<T> {
-    return this.request(method, path, searchOrBody as any, body, false);
+    return this.request(method, path, searchOrBody as URLSearchParams, body, false);
   }
 }

@@ -97,7 +97,7 @@ export interface Tokens {
 }
 
 export interface SignInResponse {
-  user: User;
+  user: User | null;
   tokens: Tokens;
   isNewUser?: boolean;
 }
@@ -110,7 +110,7 @@ export interface RequestCode {
 
 export interface User {
   uid: string;
-  name: string;
+  name?: string;
   email: string;
   emailVerified: boolean;
   photoUrl: string;

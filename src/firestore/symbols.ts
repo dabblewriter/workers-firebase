@@ -1,4 +1,3 @@
-
 export const transactionSymbol = Symbol();
 export const querySymbol = Symbol();
 export const writesSymbol = Symbol();

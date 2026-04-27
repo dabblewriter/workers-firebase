@@ -8,26 +8,29 @@ export function encode(map: DocumentData, collector?: UpdateCollector): api.MapV
   const fields: api.MapValue = {};
   Object.entries(map).forEach(([key, value]) => {
     collector?.enterField(key);
-    if (value !== undefined) fields[key] = encodeValue(value, collector);
+    if (value !== undefined) {
+      const encoded = encodeValue(value, collector);
+      if (encoded !== undefined) fields[key] = encoded;
+    }
     // Maps contribute dotted leaf paths via recursion, so adding the map's
     // own path would cause merge to overwrite sibling fields. Arrays must
     // add their own path: Firestore fieldPaths can't address array elements,
     // so arrays are always replaced whole at the parent path.
-    const shouldAddMask = !fields[key] || !fields[key].mapValue;
+    const shouldAddMask = !fields[key] || !fields[key]!.mapValue;
     collector?.leaveField(shouldAddMask);
   });
   return fields;
 }
 
-export function encodeValue(value: any, collector?: UpdateCollector) {
+export function encodeValue(value: any, collector?: UpdateCollector): api.Value | undefined {
   if (value === null) return { nullValue: null };
   if (typeof value === 'boolean') return { booleanValue: value };
   if (typeof value === 'number' && !(value === 0 && 1 / value === 1 / -0) && Number.isSafeInteger(value))
     return { integerValue: '' + value };
-  if (typeof value === 'number') return { doubleValue: '' + value };
+  if (typeof value === 'number') return { doubleValue: value };
   if (value instanceof FieldValue) {
     collector?.transform(value);
-    return;
+    return undefined;
   }
   if (value instanceof Date) return { timestampValue: value.toISOString() };
   if (value.qualifiedPath) return { referenceValue: value.qualifiedPath };
@@ -40,7 +43,10 @@ export function encodeValue(value: any, collector?: UpdateCollector) {
   // cannot address elements by index, so any inner paths the elements
   // registered (e.g. "books.id") would be invalid. Arrays are replaced
   // whole at the parent field path.
-  if (Array.isArray(value)) return { arrayValue: { values: value.map(v => encodeValue(v)) } };
+  if (Array.isArray(value)) {
+    const values = value.map(v => encodeValue(v)).filter((v): v is api.Value => v !== undefined);
+    return { arrayValue: { values } };
+  }
   if (typeof value === 'object') return { mapValue: { fields: encode(value, collector) } };
   throw new Error(`Unsupported value type: ${typeof value}`);
 }
@@ -54,8 +60,10 @@ export function decode<T = DocumentData>(firestore: Firestore, fields: api.MapVa
   return obj as T;
 }
 
-export function decodeValue(firestore: Firestore, valueObj: api.Value) {
-  const [key, value] = Object.entries(valueObj).pop();
+export function decodeValue(firestore: Firestore, valueObj: api.Value): any {
+  const entry = Object.entries(valueObj).pop();
+  if (!entry) return undefined;
+  const [key, value] = entry;
   switch (key) {
     case 'nullValue':
       return null;
@@ -64,7 +72,7 @@ export function decodeValue(firestore: Firestore, valueObj: api.Value) {
     case 'integerValue':
       return parseInt(value, 10);
     case 'doubleValue':
-      return parseFloat(value);
+      return typeof value === 'number' ? value : parseFloat(value);
     case 'timestampValue':
       return new Date(value);
     case 'stringValue':
@@ -74,7 +82,7 @@ export function decodeValue(firestore: Firestore, valueObj: api.Value) {
     case 'geoPointValue':
       return value;
     case 'arrayValue':
-      return value.values?.map(decodeValue.bind(null, firestore)) || [];
+      return value.values?.map((v: api.Value) => decodeValue(firestore, v)) || [];
     case 'mapValue':
       return decode(firestore, value.fields);
     case 'referenceValue':

@@ -3,11 +3,11 @@ import { Auth } from './auth/auth';
 import { Firestore } from './firestore';
 import { Storage } from './storage';
 
-
 export class App {
-
-  constructor(readonly settings: Settings | ServiceAccountUnderscored, readonly apiKey: string) {
-  }
+  constructor(
+    readonly settings: Settings | ServiceAccountUnderscored,
+    readonly apiKey: string
+  ) {}
 
   firestore() {
     return new Firestore(this.settings, this.apiKey);
